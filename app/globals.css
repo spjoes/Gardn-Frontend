@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-space-grotesk), ui-monospace, SFMono-Regular, monospace;
+
+  --color-surface: #fffbff;
+  --color-surface-low: #fdfaeb;
+  --color-surface-container-low: #fdfaeb;
+  --color-surface-container: #f7f4e2;
+  --color-surface-high: #f1efd9;
+  --color-surface-highest: #ebe9d0;
+
+  --color-primary-brand: #5c5f58;
+  --color-primary-dim: #50534d;
+
+  --color-ink: #383927;
+  --color-ink-variant: #666552;
+  --color-outline-ghost: #bbbaa3;
+}
+
+@layer base {
+  body {
+    @apply bg-surface text-ink font-sans selection:bg-surface-highest selection:text-ink;
+  }
+}
+
+.auth-shell {
+  background:
+    radial-gradient(circle at top left, rgba(235, 233, 208, 0.85), transparent 30%),
+    radial-gradient(circle at bottom right, rgba(241, 239, 217, 0.8), transparent 28%),
+    linear-gradient(180deg, #fffbff 0%, #fdfaeb 100%);
+}
+
+.ambient-panel {
+  box-shadow: 0 32px 80px rgba(56, 57, 39, 0.07);
+}
+
+.brand-gradient {
+  background: linear-gradient(135deg, var(--color-primary-brand), var(--color-primary-dim));
+}
+
+.field-underlined {
+  border-bottom: 1px solid rgb(187 186 163 / 15%);
+}
+
+.glass-nav {
+  background: rgba(255, 251, 255, 0.7);
+  backdrop-filter: blur(20px);
+}
+
+.lowercase-headings h1,
+.lowercase-headings h2,
+.lowercase-headings h3 {
+  @apply lowercase tracking-tight;
+}
