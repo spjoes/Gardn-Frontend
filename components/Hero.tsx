@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import Image from "next/image";
 
 const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1500622944204-b135684e99fd?q=80&w=2061&auto=format&fit=crop";
+  "https://images.unsplash.com/photo-1709755813430-5dbd547214df?q=80&w=1470&auto=format&fit=crop";
 
 export default function Hero() {
   return (
