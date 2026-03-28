@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 import AddGardenSiteForm from "@/components/gardens/AddGardenSiteForm";
 import Modal from "@/components/ui/Modal";
 import AddButton from "@/components/ui/AddButton";
@@ -96,47 +97,47 @@ export default function GardenDetailClient({
               {schemaError}
             </div>
           ) : sites.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              {sites.map((site) => (
-                <div
+            <div className="grid grid-cols-1 gap-4">
+              {sites.map((site, index) => (
+                <motion.div
                   key={site.id}
-                  className="group relative p-8 rounded-[2.5rem] bg-surface-container-low hover:bg-surface-container transition-colors duration-500 ambient-panel"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  whileHover={{ scale: 1.005, backgroundColor: "var(--color-surface-container)" }}
+                  className="group relative px-6 py-4 rounded-2xl bg-surface-container-low transition-all duration-300 ambient-panel border border-transparent hover:border-outline-ghost/10 flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
-                  <div className="flex flex-col gap-6">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <span className="px-3 py-1 rounded-full bg-surface-highest text-[10px] uppercase tracking-widest text-primary-brand font-semibold">
-                          {site.processing_status}
-                        </span>
-                        <span className="text-[10px] uppercase tracking-widest text-ink-variant/40 font-medium">
-                          {formatDate(site.created_at)}
-                        </span>
-                      </div>
+                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 flex-1 min-w-0">
+                    <div className="flex items-center gap-3 shrink-0">
+                      <span className="px-2 py-0.5 rounded-full bg-surface-highest text-[9px] uppercase tracking-widest text-primary-brand font-bold">
+                        {site.processing_status}
+                      </span>
+                      <span className="text-[9px] uppercase tracking-widest text-ink-variant/40 font-medium">
+                        {formatDate(site.created_at)}
+                      </span>
                     </div>
 
-                    <div className="space-y-4">
-                      <a
-                        href={site.normalized_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block text-2xl font-medium tracking-tight text-ink hover:text-primary-brand transition-colors break-all leading-tight"
-                      >
+                    <div className="flex-1 min-w-0">
+                      <span className="block text-lg font-medium tracking-tight text-ink truncate leading-tight">
                         {site.normalized_url.replace(/^https?:\/\/(www\.)?/, '')}
-                      </a>
-                      
-                      <p className="text-ink-variant leading-relaxed max-w-2xl text-sm">
+                      </span>
+                    </div>
+
+                    <div className="hidden lg:block flex-1 max-w-md">
+                      <p className="text-ink-variant/70 text-xs truncate italic">
                         {site.processor_status_message ||
                           "Digital artifact queued for archival processing."}
                       </p>
                     </div>
+                  </div>
 
-                    <div className="pt-4 flex items-center gap-2 text-[10px] uppercase tracking-widest text-ink-variant/30 font-bold">
-                      <span>File Reference</span>
-                      <span className="h-px flex-1 bg-outline-ghost/10"></span>
+                  <div className="flex items-center gap-4 shrink-0">
+                    <div className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-ink-variant/30 font-bold">
+                      <span className="hidden sm:inline">Ref.</span>
                       <span>{site.id.slice(0, 8)}</span>
                     </div>
                   </div>
-                </div>
+                </motion.div>
               ))}
             </div>
           ) : (
