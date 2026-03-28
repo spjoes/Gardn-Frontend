@@ -19,7 +19,7 @@ export default async function Home() {
         <Hero />
         <FeatureSection />
         <AgentSupport />
-        <CTA />
+        <CTA userEmail={user?.email} />
       </main>
       <Footer />
     </div>

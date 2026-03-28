@@ -55,7 +55,7 @@ export default function Navbar({ userEmail }: NavbarProps) {
           <form action={signOut}>
             <button
               type="submit"
-              className="brand-gradient whitespace-nowrap rounded-full px-5 py-2 text-sm text-white transition-all hover:opacity-90 active:scale-95"
+              className="brand-gradient cursor-pointer whitespace-nowrap rounded-full px-5 py-2 text-sm text-white transition-all hover:opacity-90 active:scale-95"
             >
               sign out
             </button>

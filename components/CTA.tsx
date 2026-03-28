@@ -1,4 +1,6 @@
-export default function CTA() {
+import Link from "next/link";
+
+export default function CTA({ userEmail }: { userEmail?: string }) {
   return (
     <section className="max-w-7xl mx-auto px-6 mb-32">
       <div className="bg-surface-highest rounded-[2rem] p-16 md:p-24 text-center relative overflow-hidden">
@@ -12,12 +14,12 @@ export default function CTA() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button
-              type="button"
-              className="px-10 py-4 bg-primary-brand cursor-pointer text-white rounded-full font-medium hover:opacity-90 transition-all active:scale-95"
+            <Link
+              href={userEmail ? "/gardens" : "/sign-in"}
+              className="px-10 py-4 bg-primary-brand cursor-pointer text-white rounded-full font-medium hover:opacity-90 transition-all active:scale-95 inline-block"
             >
               start your garden
-            </button>
+            </Link>
           </div>
         </div>
 

@@ -103,9 +103,9 @@ export default function GardenDetailClient({
                   key={site.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ scale: 1.005, backgroundColor: "var(--color-surface-container)" }}
-                  className="group relative px-6 py-4 rounded-2xl bg-surface-container-low transition-all duration-300 ambient-panel border border-transparent hover:border-outline-ghost/10 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  transition={{ duration: 0.0 }}
+                  whileHover={{ backgroundColor: "var(--color-surface-container)" }}
+                  className="group relative px-6 py-4 rounded-2xl bg-surface-container-low transition-colors duration-150 ambient-panel border border-transparent hover:border-outline-ghost/10 flex flex-col md:flex-row md:items-center justify-between gap-4"
                 >
                   <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 flex-1 min-w-0">
                     <div className="flex items-center gap-3 shrink-0">
@@ -149,7 +149,7 @@ export default function GardenDetailClient({
                 This garden is currently empty.
               </p>
               <p className="text-sm text-ink-variant/60 max-w-xs mx-auto">
-                Click the plus button or here to archive your first digital artifact.
+                Click the plus button or here to seed your first site.
               </p>
             </div>
           )}
@@ -163,7 +163,7 @@ export default function GardenDetailClient({
       >
         <div className="space-y-6">
           <p className="text-sm leading-relaxed text-ink-variant/80">
-            Submit a URL to be processed and indexed into this garden&apos;s digital archive.
+            Submit a URL to be processed and indexed into this garden.
           </p>
           {garden ? (
             <AddGardenSiteForm 

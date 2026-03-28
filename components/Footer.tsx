@@ -7,12 +7,13 @@ export default function Footer() {
         <div className="text-[10px] uppercase tracking-[0.2em]">
           © 2026 Gardn
         </div>
+        <div className="text-[10px] uppercase tracking-[0.2em]">Made for RevolutionUC 2026</div>
 
-        <div className="flex gap-8">
+        {/* <div className="flex gap-8">
           <FooterLink href="#">terms</FooterLink>
           <FooterLink href="#">privacy</FooterLink>
           <FooterLink href="#">metadata</FooterLink>
-        </div>
+        </div> */}
       </div>
     </footer>
   );
