@@ -11,7 +11,7 @@ export default function AddButton({ onClick, label }: AddButtonProps) {
   return (
     <button
       onClick={onClick}
-      className="group flex h-16 w-16 items-center justify-center rounded-full bg-surface-container-highest transition-all hover:scale-105 hover:bg-surface-high shadow-sm"
+      className="group flex h-16 w-16 cursor-pointer items-center justify-center rounded-full bg-surface-container-highest transition-all hover:scale-105 hover:bg-surface-high shadow-sm"
     >
       <span className="sr-only">{label}</span>
       <div className="relative h-6 w-6">

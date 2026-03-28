@@ -7,6 +7,8 @@ import {
   type GardenFormState,
 } from "@/app/gardens/actions";
 
+import { ModalButton } from "@/components/ui/Modal";
+
 const INITIAL_STATE: GardenFormState = undefined;
 
 type AddGardenSiteFormProps = {
@@ -63,13 +65,12 @@ export default function AddGardenSiteForm({
         </div>
       ) : null}
 
-      <button
+      <ModalButton
         type="submit"
         disabled={pending}
-        className="brand-gradient w-full rounded-2xl px-6 py-4 text-sm font-medium tracking-widest text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 uppercase"
       >
         {pending ? "planting..." : "seed this site"}
-      </button>
+      </ModalButton>
     </form>
   );
 }

@@ -9,6 +9,31 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
+export function ModalButton({
+  type = "button",
+  disabled,
+  onClick,
+  children,
+  className = "",
+}: {
+  type?: "button" | "submit";
+  disabled?: boolean;
+  onClick?: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      type={type}
+      disabled={disabled}
+      onClick={onClick}
+      className={`brand-gradient flex w-full cursor-pointer items-center justify-center rounded-2xl px-8 py-4 text-sm font-medium tracking-wide text-white transition-all hover:opacity-90 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 ${className}`}
+    >
+      {children}
+    </button>
+  );
+}
+
 export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +59,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-ink/10 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 cursor-pointer bg-ink/10 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
@@ -47,7 +72,7 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           <h2 className="text-2xl font-medium tracking-tight lowercase">{title}</h2>
           <button 
             onClick={onClose}
-            className="group relative h-8 w-8 rounded-full bg-surface-container-highest transition-colors hover:bg-surface-high"
+            className="group relative h-8 w-8 cursor-pointer rounded-full bg-surface-container-highest transition-colors hover:bg-surface-high"
           >
             <span className="sr-only">Close</span>
             <div className="absolute inset-0 flex items-center justify-center">

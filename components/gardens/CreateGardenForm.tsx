@@ -7,6 +7,8 @@ import {
   type GardenFormState,
 } from "@/app/gardens/actions";
 
+import { ModalButton } from "@/components/ui/Modal";
+
 const INITIAL_STATE: GardenFormState = undefined;
 
 export default function CreateGardenForm({ onSuccess }: { onSuccess?: () => void }) {
@@ -64,13 +66,12 @@ export default function CreateGardenForm({ onSuccess }: { onSuccess?: () => void
         </div>
       ) : null}
 
-      <button
+      <ModalButton
         type="submit"
         disabled={pending}
-        className="brand-gradient inline-flex rounded-2xl px-6 py-4 text-sm font-medium tracking-wide text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-70"
       >
         {pending ? "creating garden..." : "create garden"}
-      </button>
+      </ModalButton>
     </form>
   );
 }

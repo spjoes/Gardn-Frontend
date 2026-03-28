@@ -14,7 +14,7 @@ export default function CTA() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <button
               type="button"
-              className="px-10 py-4 bg-primary-brand text-white rounded-full font-medium hover:opacity-90 transition-all active:scale-95"
+              className="px-10 py-4 bg-primary-brand cursor-pointer text-white rounded-full font-medium hover:opacity-90 transition-all active:scale-95"
             >
               start your garden
             </button>
