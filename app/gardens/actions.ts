@@ -5,6 +5,10 @@ import { redirect } from "next/navigation";
 import { after } from "next/server";
 
 import { enqueueGardenSiteDesignDna } from "@/lib/design-dna";
+import {
+  createOrRotateGardenMcpTokenForUser,
+  revokeGardenMcpTokenForUser,
+} from "@/lib/garden-mcp";
 import { requireAuthenticatedUser } from "@/lib/gardens";
 import { createClient } from "@/lib/supabase/server";
 
@@ -19,6 +23,15 @@ export type DeleteGardenSiteState = {
   error?: string;
   success?: string;
 };
+
+export type GardenMcpTokenState =
+  | {
+      error?: string;
+      success?: string;
+      token?: string;
+      tokenPrefix?: string;
+    }
+  | undefined;
 
 const GARDEN_NAME_LIMIT = 80;
 const GARDEN_DESCRIPTION_LIMIT = 280;
@@ -283,4 +296,51 @@ export async function deleteGardenSite(
   return {
     success: "Site removed from this garden.",
   };
+}
+
+export async function createGardenMcpToken(
+  gardenId: string,
+): Promise<GardenMcpTokenState> {
+  const user = await requireAuthenticatedUser();
+
+  try {
+    const result = await createOrRotateGardenMcpTokenForUser(user.id, gardenId);
+
+    revalidatePath("/gardens");
+    revalidatePath(`/gardens/${gardenId}`);
+
+    return {
+      success:
+        "Garden MCP token ready. Copy it now. Any earlier token for this garden has been replaced.",
+      token: result.token,
+      tokenPrefix: result.tokenSummary.token_prefix,
+    };
+  } catch {
+    return {
+      error:
+        "The garden MCP token could not be created right now. Check your Supabase schema and try again.",
+    };
+  }
+}
+
+export async function revokeGardenMcpToken(
+  gardenId: string,
+): Promise<GardenMcpTokenState> {
+  const user = await requireAuthenticatedUser();
+
+  try {
+    await revokeGardenMcpTokenForUser(user.id, gardenId);
+
+    revalidatePath("/gardens");
+    revalidatePath(`/gardens/${gardenId}`);
+
+    return {
+      success: "Garden MCP access revoked.",
+    };
+  } catch {
+    return {
+      error:
+        "The garden MCP token could not be revoked right now. Check your Supabase schema and try again.",
+    };
+  }
 }

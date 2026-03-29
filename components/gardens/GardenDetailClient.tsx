@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 
 import AddGardenSiteForm from "@/components/gardens/AddGardenSiteForm";
 import DeleteGardenSiteButton from "@/components/gardens/DeleteGardenSiteButton";
+import GardenMcpPanel from "@/components/gardens/GardenMcpPanel";
 import GenerateGardenSiteDnaButton from "@/components/gardens/GenerateGardenSiteDnaButton";
 import Modal from "@/components/ui/Modal";
 import AddButton from "@/components/ui/AddButton";
@@ -31,10 +32,22 @@ interface Garden {
   description: string | null;
 }
 
+interface GardenMcpTokenSummary {
+  id: string;
+  token_prefix: string;
+  last_used_at: string | null;
+  last_used_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 interface GardenDetailClientProps {
   garden: Garden | null;
   sites: Site[];
   schemaError: string | null;
+  mcpToken: GardenMcpTokenSummary | null;
+  mcpEndpoint: string | null;
+  mcpError: string | null;
 }
 
 function formatDate(date: string) {
@@ -95,8 +108,12 @@ export default function GardenDetailClient({
   garden,
   sites,
   schemaError,
+  mcpToken,
+  mcpEndpoint,
+  mcpError,
 }: GardenDetailClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const analyzedSiteCount = sites.filter((site) => Boolean(site.design_document)).length;
 
   return (
     <section className="mx-auto max-w-7xl px-6 pt-40 pb-20">
@@ -145,6 +162,18 @@ export default function GardenDetailClient({
       </div>
 
       <div className="grid grid-cols-1 gap-16 items-start">
+        {garden ? (
+          <GardenMcpPanel
+            gardenId={garden.id}
+            gardenName={garden.name}
+            mcpToken={mcpToken}
+            mcpEndpoint={mcpEndpoint}
+            mcpError={mcpError}
+            totalSiteCount={sites.length}
+            analyzedSiteCount={analyzedSiteCount}
+          />
+        ) : null}
+
         <div className="space-y-6">
           <div className="space-y-2">
             <p className="text-[10px] uppercase tracking-[0.3em] text-ink-variant/60">

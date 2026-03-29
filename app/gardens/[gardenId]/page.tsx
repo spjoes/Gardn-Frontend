@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import GardenDetailClient from "@/components/gardens/GardenDetailClient";
+import {
+  getGardenMcpEndpoint,
+  getGardenMcpTokenForUser,
+} from "@/lib/garden-mcp";
 import { getGardenDetailForUser, requireAuthenticatedUser } from "@/lib/gardens";
 
 type GardenDetailPageProps = {
@@ -21,6 +25,10 @@ export default async function GardenDetailPage({
     | Awaited<ReturnType<typeof getGardenDetailForUser>>
     | null = null;
   let schemaError: string | null = null;
+  let mcpToken:
+    | Awaited<ReturnType<typeof getGardenMcpTokenForUser>>
+    | null = null;
+  let mcpError: string | null = null;
 
   try {
     detail = await getGardenDetailForUser(user.id, gardenId);
@@ -35,6 +43,16 @@ export default async function GardenDetailPage({
 
   const garden = detail?.garden;
   const sites = detail?.sites ?? [];
+  const mcpEndpoint = getGardenMcpEndpoint();
+
+  if (garden) {
+    try {
+      mcpToken = await getGardenMcpTokenForUser(user.id, gardenId);
+    } catch {
+      mcpError =
+        "The MCP connection layer is not live yet. Apply the latest Supabase migration and reload this garden.";
+    }
+  }
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-surface-highest selection:text-ink">
@@ -42,9 +60,12 @@ export default async function GardenDetailPage({
 
       <main className="flex-1">
         <GardenDetailClient 
-          garden={garden ?? null} 
-          sites={sites} 
-          schemaError={schemaError} 
+          garden={garden ?? null}
+          sites={sites}
+          schemaError={schemaError}
+          mcpToken={mcpToken}
+          mcpEndpoint={mcpEndpoint}
+          mcpError={mcpError}
         />
       </main>
 
