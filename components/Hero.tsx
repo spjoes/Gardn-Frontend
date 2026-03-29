@@ -3,6 +3,9 @@
 import { motion } from "motion/react";
 import Image from "next/image";
 
+import { notifyNavContrastUpdate } from "@/lib/nav-backdrop-luminance";
+import { refreshLiquidGlassSnapshot } from "@/lib/liquid-glass-snapshot";
+
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1709755813430-5dbd547214df?q=80&w=1470&auto=format&fit=crop";
   // "/cincy-skyline.png"
@@ -11,6 +14,7 @@ export default function Hero() {
   return (
     <section className="px-6 max-w-7xl mx-auto pt-32 pb-24">
       <motion.div
+        data-liquid-dynamic=""
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8 }}
@@ -23,6 +27,10 @@ export default function Hero() {
           className="object-cover"
           sizes="(max-width: 1280px) 100vw, 1280px"
           priority
+          onLoadingComplete={() => {
+            refreshLiquidGlassSnapshot();
+            notifyNavContrastUpdate();
+          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ink/40 to-transparent pointer-events-none" />
         <div className="absolute bottom-10 left-10 right-10 pointer-events-none">

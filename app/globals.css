@@ -49,6 +49,13 @@
   backdrop-filter: blur(20px);
 }
 
+/* Fallback + tint sample for liquidGL (WebGL path replaces backdrop with the shader). */
+.gardn-liquid-glass-nav {
+  box-sizing: border-box;
+  /* liquidGL inherits border-radius; keep pill shape explicit for layout before init */
+  border-radius: 9999px;
+}
+
 .lowercase-headings h1,
 .lowercase-headings h2,
 .lowercase-headings h3 {
