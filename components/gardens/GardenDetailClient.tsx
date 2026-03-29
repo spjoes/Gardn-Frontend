@@ -6,14 +6,23 @@ import { motion } from "motion/react";
 
 import AddGardenSiteForm from "@/components/gardens/AddGardenSiteForm";
 import DeleteGardenSiteButton from "@/components/gardens/DeleteGardenSiteButton";
+import GenerateGardenSiteDnaButton from "@/components/gardens/GenerateGardenSiteDnaButton";
 import Modal from "@/components/ui/Modal";
 import AddButton from "@/components/ui/AddButton";
+
+interface DesignDocumentSummary {
+  id: string;
+  updated_at: string;
+  search_tags: string[];
+}
 
 interface Site {
   id: string;
   normalized_url: string;
+  processing_status: string;
   processor_status_message: string | null;
   created_at: string;
+  design_document: DesignDocumentSummary | null;
 }
 
 interface Garden {
@@ -52,6 +61,34 @@ function formatSiteLabel(url: string) {
   } catch {
     return url.replace(/^https?:\/\/(www\.)?/, "");
   }
+}
+
+function getSiteStatusLabel(site: Site) {
+  if (site.processing_status === "failed") {
+    return "needs retry";
+  }
+
+  if (site.processing_status === "processing") {
+    return "analyzing";
+  }
+
+  if (site.processing_status === "queued") {
+    return "queued";
+  }
+
+  return site.design_document ? "dna ready" : "saved";
+}
+
+function getSiteStatusClasses(site: Site) {
+  if (site.processing_status === "failed") {
+    return "bg-surface-high text-ink-variant";
+  }
+
+  if (site.processing_status === "processing" || site.processing_status === "queued") {
+    return "bg-surface-highest text-ink-variant";
+  }
+
+  return "bg-surface-container text-ink-variant";
 }
 
 export default function GardenDetailClient({
@@ -139,7 +176,12 @@ export default function GardenDetailClient({
                     <div className="min-w-0 space-y-3">
                       <div className="flex flex-wrap items-center gap-3">
                         <span className="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-ink-variant">
-                          saved
+                          saved reference
+                        </span>
+                        <span
+                          className={`rounded-full px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] ${getSiteStatusClasses(site)}`}
+                        >
+                          {getSiteStatusLabel(site)}
                         </span>
                         <span className="text-[10px] uppercase tracking-[0.28em] text-ink-variant/45">
                           added {formatTimestamp(site.created_at)}
@@ -154,6 +196,25 @@ export default function GardenDetailClient({
                           {site.processor_status_message ?? "Saved for future reference."}
                         </p>
                       </div>
+
+                      {site.design_document?.search_tags?.length ? (
+                        <div className="flex flex-wrap gap-2 pt-1">
+                          {site.design_document.search_tags.slice(0, 4).map((tag) => (
+                            <span
+                              key={tag}
+                              className="rounded-full bg-surface-highest px-3 py-1 text-[10px] uppercase tracking-[0.22em] text-ink-variant/75"
+                            >
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+
+                      {site.design_document ? (
+                        <p className="text-[11px] leading-relaxed text-ink-variant/55">
+                          DESIGN.md updated {formatTimestamp(site.design_document.updated_at)}
+                        </p>
+                      ) : null}
                     </div>
 
                     <div className="flex flex-col items-end gap-3">
@@ -161,6 +222,26 @@ export default function GardenDetailClient({
                         <span>ref.</span>
                         <span>{site.id.slice(0, 8)}</span>
                       </div>
+
+                      {garden?.id && site.design_document ? (
+                        <Link
+                          href={`/gardens/${garden.id}/sites/${site.id}`}
+                          className="rounded-full bg-surface-container px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-ink-variant transition-colors hover:bg-surface-high"
+                        >
+                          view dna
+                        </Link>
+                      ) : null}
+
+                      {garden?.id &&
+                      site.processing_status !== "queued" &&
+                      site.processing_status !== "processing" ? (
+                        <GenerateGardenSiteDnaButton
+                          gardenId={garden.id}
+                          siteId={site.id}
+                          hasDesignDocument={Boolean(site.design_document)}
+                        />
+                      ) : null}
+
                       {garden?.id ? (
                         <DeleteGardenSiteButton
                           gardenId={garden.id}

@@ -2,7 +2,9 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 
+import { enqueueGardenSiteDesignDna } from "@/lib/design-dna";
 import { requireAuthenticatedUser } from "@/lib/gardens";
 import { createClient } from "@/lib/supabase/server";
 
@@ -151,18 +153,20 @@ export async function addSiteToGarden(
     };
   }
 
-  const { error: insertError } = await supabase
+  const { data: insertedSite, error: insertError } = await supabase
     .from("garden_sites")
     .insert({
       garden_id: garden.id,
       user_id: user.id,
       site_url: rawSiteUrl,
       normalized_url: normalizedUrl,
-      processing_status: "ready",
+      processing_status: "queued",
       processing_requested_at: new Date().toISOString(),
-      processed_at: new Date().toISOString(),
-      processor_status_message: "Saved to this garden.",
-    });
+      processed_at: null,
+      processor_status_message: "Queued for Design DNA analysis.",
+    })
+    .select("id")
+    .single();
 
   if (insertError) {
     if (insertError.code === "23505") {
@@ -177,11 +181,70 @@ export async function addSiteToGarden(
     };
   }
 
+  after(() => enqueueGardenSiteDesignDna(insertedSite.id));
+
   revalidatePath("/gardens");
   revalidatePath(`/gardens/${gardenId}`);
 
   return {
-    success: "Site saved to this garden.",
+    success: "Site saved. Gardn is writing a DESIGN.md in the background.",
+  };
+}
+
+export async function requestGardenSiteDesignDna(
+  gardenId: string,
+  gardenSiteId: string,
+): Promise<GardenFormState> {
+  const user = await requireAuthenticatedUser();
+  const supabase = await createClient();
+
+  const { data: site, error: siteLookupError } = await supabase
+    .from("garden_sites")
+    .select("id")
+    .eq("id", gardenSiteId)
+    .eq("garden_id", gardenId)
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  if (siteLookupError) {
+    return {
+      error:
+        "The Design DNA job could not be queued right now. Check your Supabase schema and try again.",
+    };
+  }
+
+  if (!site) {
+    return {
+      error: "That saved site could not be found.",
+    };
+  }
+
+  const { error: updateError } = await supabase
+    .from("garden_sites")
+    .update({
+      processing_status: "queued",
+      processor_status_message: "Queued for Design DNA analysis.",
+      processing_requested_at: new Date().toISOString(),
+      processed_at: null,
+    })
+    .eq("id", gardenSiteId)
+    .eq("garden_id", gardenId)
+    .eq("user_id", user.id);
+
+  if (updateError) {
+    return {
+      error:
+        "The Design DNA job could not be queued right now. Check your Supabase schema and try again.",
+    };
+  }
+
+  after(() => enqueueGardenSiteDesignDna(gardenSiteId));
+
+  revalidatePath("/gardens");
+  revalidatePath(`/gardens/${gardenId}`);
+
+  return {
+    success: "Design DNA queued. Gardn will refresh this site's dossier in the background.",
   };
 }
 

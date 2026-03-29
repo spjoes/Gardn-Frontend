@@ -72,6 +72,10 @@ export default function AddGardenSiteForm({
       >
         {pending ? "planting..." : "seed this site"}
       </ModalButton>
+
+      <p className="text-[10px] font-medium leading-relaxed uppercase tracking-widest text-ink-variant/45">
+        Gardn will draft a DESIGN.md for this site in the background.
+      </p>
     </form>
   );
 }

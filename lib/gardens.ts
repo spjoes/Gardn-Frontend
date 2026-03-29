@@ -26,6 +26,25 @@ export type GardenSite = {
   processed_at: string | null;
   created_at: string;
   updated_at: string;
+  design_document: GardenSiteDesignDocumentSummary | null;
+};
+
+export type GardenSiteDesignDocumentSummary = {
+  id: string;
+  garden_site_id: string;
+  model_provider: string;
+  model_name: string;
+  prompt_version: string;
+  search_tags: string[];
+  created_at: string;
+  updated_at: string;
+};
+
+export type GardenSiteDesignDocument = GardenSiteDesignDocumentSummary & {
+  source_url: string;
+  document_markdown: string;
+  style_fingerprint: Record<string, unknown>;
+  analysis_metadata: Record<string, unknown>;
 };
 
 const SIGN_IN_MESSAGE = encodeURIComponent("Sign in to manage your gardens.");
@@ -104,8 +123,145 @@ export async function getGardenDetailForUser(userId: string, gardenId: string) {
     throw new Error(sitesResult.error.message);
   }
 
+  const rawSites = ((sitesResult.data ?? []) as unknown) as Array<
+    Omit<GardenSite, "design_document">
+  >;
+  const siteIds = rawSites.map((site) => site.id);
+
+  let designDocumentsBySiteId = new Map<string, GardenSiteDesignDocumentSummary>();
+
+  if (siteIds.length > 0) {
+    const { data: designDocuments, error: designDocumentsError } = await supabase
+      .from("garden_site_design_documents")
+      .select(
+        [
+          "id",
+          "garden_site_id",
+          "model_provider",
+          "model_name",
+          "prompt_version",
+          "search_tags",
+          "created_at",
+          "updated_at",
+        ].join(", "),
+      )
+      .in("garden_site_id", siteIds);
+
+    if (designDocumentsError) {
+      throw new Error(designDocumentsError.message);
+    }
+
+    designDocumentsBySiteId = new Map(
+      (((designDocuments ?? []) as unknown) as GardenSiteDesignDocumentSummary[]).map(
+        (document) => [document.garden_site_id, document],
+      ),
+    );
+  }
+
   return {
     garden: ((gardenResult.data ?? null) as unknown) as Garden | null,
-    sites: ((sitesResult.data ?? []) as unknown) as GardenSite[],
+    sites: rawSites.map((site) => ({
+      ...site,
+      design_document: designDocumentsBySiteId.get(site.id) ?? null,
+    })),
+  };
+}
+
+export async function getGardenSiteDesignDocumentForUser(
+  userId: string,
+  gardenId: string,
+  gardenSiteId: string,
+) {
+  const supabase = await createClient();
+
+  const [gardenResult, siteResult, designDocumentResult] = await Promise.all([
+    supabase
+      .from("gardens")
+      .select("id, user_id, name, description, created_at, updated_at")
+      .eq("id", gardenId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("garden_sites")
+      .select(
+        [
+          "id",
+          "garden_id",
+          "user_id",
+          "site_url",
+          "normalized_url",
+          "processing_status",
+          "processor_status_message",
+          "processing_requested_at",
+          "processed_at",
+          "created_at",
+          "updated_at",
+        ].join(", "),
+      )
+      .eq("id", gardenSiteId)
+      .eq("garden_id", gardenId)
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("garden_site_design_documents")
+      .select(
+        [
+          "id",
+          "garden_site_id",
+          "source_url",
+          "document_markdown",
+          "style_fingerprint",
+          "search_tags",
+          "model_provider",
+          "model_name",
+          "prompt_version",
+          "analysis_metadata",
+          "created_at",
+          "updated_at",
+        ].join(", "),
+      )
+      .eq("garden_site_id", gardenSiteId)
+      .maybeSingle(),
+  ]);
+
+  if (gardenResult.error) {
+    throw new Error(gardenResult.error.message);
+  }
+
+  if (siteResult.error) {
+    throw new Error(siteResult.error.message);
+  }
+
+  if (designDocumentResult.error) {
+    throw new Error(designDocumentResult.error.message);
+  }
+
+  const rawDesignDocument = ((designDocumentResult.data ?? null) as unknown) as GardenSiteDesignDocument | null;
+
+  const site = siteResult.data
+    ? ({
+        ...(((siteResult.data ?? null) as unknown) as Omit<
+          GardenSite,
+          "design_document"
+        >),
+        design_document: rawDesignDocument
+          ? {
+              id: rawDesignDocument.id,
+              garden_site_id: rawDesignDocument.garden_site_id,
+              model_provider: rawDesignDocument.model_provider,
+              model_name: rawDesignDocument.model_name,
+              prompt_version: rawDesignDocument.prompt_version,
+              search_tags: rawDesignDocument.search_tags ?? [],
+              created_at: rawDesignDocument.created_at,
+              updated_at: rawDesignDocument.updated_at,
+            }
+          : null,
+      } satisfies GardenSite)
+    : null;
+
+  return {
+    garden: ((gardenResult.data ?? null) as unknown) as Garden | null,
+    site,
+    designDocument: rawDesignDocument,
   };
 }
