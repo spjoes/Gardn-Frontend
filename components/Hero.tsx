@@ -5,6 +5,7 @@ import Image from "next/image";
 
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1709755813430-5dbd547214df?q=80&w=1470&auto=format&fit=crop";
+  // "/cincy-skyline.png"
 
 export default function Hero() {
   return (

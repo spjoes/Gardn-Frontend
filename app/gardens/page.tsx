@@ -1,12 +1,16 @@
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
-import { listGardensForUser, requireAuthenticatedUser } from "@/lib/gardens";
+import {
+  listGardensForUser,
+  requireAuthenticatedUser,
+  type Garden,
+} from "@/lib/gardens";
 import GardensClient from "@/components/gardens/GardensClient";
 
 export default async function GardensPage() {
   const user = await requireAuthenticatedUser();
 
-  let gardens: any[] = [];
+  let gardens: Garden[] = [];
   let schemaError: string | null = null;
 
   try {

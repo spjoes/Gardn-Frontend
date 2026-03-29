@@ -4,7 +4,6 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { requireAuthenticatedUser } from "@/lib/gardens";
-import { dispatchGardenSiteToProcessor } from "@/lib/site-processing";
 import { createClient } from "@/lib/supabase/server";
 
 export type GardenFormState =
@@ -13,6 +12,11 @@ export type GardenFormState =
       success?: string;
     }
   | undefined;
+
+export type DeleteGardenSiteState = {
+  error?: string;
+  success?: string;
+};
 
 const GARDEN_NAME_LIMIT = 80;
 const GARDEN_DESCRIPTION_LIMIT = 280;
@@ -147,19 +151,18 @@ export async function addSiteToGarden(
     };
   }
 
-  const { data: siteRecord, error: insertError } = await supabase
+  const { error: insertError } = await supabase
     .from("garden_sites")
     .insert({
       garden_id: garden.id,
       user_id: user.id,
       site_url: rawSiteUrl,
       normalized_url: normalizedUrl,
-      processing_status: "queued",
+      processing_status: "ready",
       processing_requested_at: new Date().toISOString(),
-      processor_status_message: "Queued for processing.",
-    })
-    .select("id")
-    .single();
+      processed_at: new Date().toISOString(),
+      processor_status_message: "Saved to this garden.",
+    });
 
   if (insertError) {
     if (insertError.code === "23505") {
@@ -174,29 +177,47 @@ export async function addSiteToGarden(
     };
   }
 
-  const dispatchResult = await dispatchGardenSiteToProcessor({
-    gardenId,
-    gardenSiteId: siteRecord.id,
-    siteUrl: normalizedUrl,
-    userId: user.id,
-  });
+  revalidatePath("/gardens");
+  revalidatePath(`/gardens/${gardenId}`);
 
-  if (!dispatchResult.accepted) {
-    await supabase
-      .from("garden_sites")
-      .update({
-        processor_status_message: dispatchResult.message,
-      })
-      .eq("id", siteRecord.id)
-      .eq("user_id", user.id);
+  return {
+    success: "Site saved to this garden.",
+  };
+}
+
+export async function deleteGardenSite(
+  gardenId: string,
+  gardenSiteId: string,
+): Promise<DeleteGardenSiteState> {
+  const user = await requireAuthenticatedUser();
+  const supabase = await createClient();
+
+  const { data, error } = await supabase
+    .from("garden_sites")
+    .delete()
+    .eq("id", gardenSiteId)
+    .eq("garden_id", gardenId)
+    .eq("user_id", user.id)
+    .select("id")
+    .maybeSingle();
+
+  if (error) {
+    return {
+      error:
+        "The site could not be removed right now. Check your Supabase schema and try again.",
+    };
+  }
+
+  if (!data) {
+    return {
+      error: "That saved site could not be found.",
+    };
   }
 
   revalidatePath("/gardens");
   revalidatePath(`/gardens/${gardenId}`);
 
   return {
-    success: dispatchResult.accepted
-      ? "Site saved and queued for processing."
-      : "Site saved. The processing endpoint still needs wiring.",
+    success: "Site removed from this garden.",
   };
 }

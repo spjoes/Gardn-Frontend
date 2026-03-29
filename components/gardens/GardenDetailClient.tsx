@@ -3,14 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
+
 import AddGardenSiteForm from "@/components/gardens/AddGardenSiteForm";
+import DeleteGardenSiteButton from "@/components/gardens/DeleteGardenSiteButton";
 import Modal from "@/components/ui/Modal";
 import AddButton from "@/components/ui/AddButton";
 
 interface Site {
   id: string;
   normalized_url: string;
-  processing_status: string;
   processor_status_message: string | null;
   created_at: string;
 }
@@ -35,6 +36,24 @@ function formatDate(date: string) {
   }).format(new Date(date));
 }
 
+function formatTimestamp(date: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(date));
+}
+
+function formatSiteLabel(url: string) {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.hostname.replace(/^www\./, "")}${parsed.pathname === "/" ? "" : parsed.pathname}`;
+  } catch {
+    return url.replace(/^https?:\/\/(www\.)?/, "");
+  }
+}
+
 export default function GardenDetailClient({
   garden,
   sites,
@@ -42,43 +61,42 @@ export default function GardenDetailClient({
 }: GardenDetailClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Close modal when a site is successfully added (you'll need to handle this in the form or via state)
-  // For now, we'll just let the user close it manually or after a successful action if we add a callback.
-
   return (
-    <section className="px-6 pt-40 pb-20 max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-        <div className="space-y-6 max-w-3xl">
+    <section className="mx-auto max-w-7xl px-6 pt-40 pb-20">
+      <div className="mb-16 flex flex-col justify-between gap-8 md:flex-row md:items-end">
+        <div className="max-w-3xl space-y-6">
           <Link
             href="/gardens"
-            className="group inline-flex items-center gap-2 text-sm text-ink-variant hover:text-ink transition-colors"
+            className="group inline-flex items-center gap-2 text-sm text-ink-variant transition-colors hover:text-ink"
           >
-            <span className="text-lg transition-transform group-hover:-translate-x-1">←</span>
+            <span className="text-lg transition-transform group-hover:-translate-x-1">
+              ←
+            </span>
             <span>back to your gardens</span>
           </Link>
-          
+
           <div className="space-y-2">
-            <p className="text-[10px] uppercase tracking-[0.3em] text-ink-variant/60 font-medium">
-              Garden ID. {garden?.id.split('-')[0] || '000'}
+            <p className="text-[10px] font-medium uppercase tracking-[0.3em] text-ink-variant/60">
+              Garden ID. {garden?.id.split("-")[0] || "000"}
             </p>
-            <h1 className="text-5xl md:text-7xl font-medium tracking-tighter lowercase leading-[0.9]">
+            <h1 className="text-5xl font-medium leading-[0.9] tracking-tighter lowercase md:text-7xl">
               {garden?.name ?? "untitled garden"}
             </h1>
           </div>
 
-          <p className="text-xl md:text-2xl text-ink-variant leading-relaxed font-light">
+          <p className="text-xl font-light leading-relaxed text-ink-variant md:text-2xl">
             {garden?.description ||
               "A curated collection of digital artifacts and web design inspiration."}
           </p>
         </div>
 
-        <div className="flex flex-col items-start md:items-end gap-6 self-end">
-          <div className="flex flex-col items-start md:items-end gap-2">
-            <div className="px-4 py-2 rounded-full bg-surface-container-high text-[11px] uppercase tracking-widest text-ink-variant font-medium">
-              {sites.length} {sites.length === 1 ? 'seed' : 'seeds'}
+        <div className="flex flex-col items-start gap-6 self-end md:items-end">
+          <div className="flex flex-col items-start gap-2 md:items-end">
+            <div className="rounded-full bg-surface-container px-4 py-2 text-[11px] font-medium uppercase tracking-widest text-ink-variant">
+              {sites.length} {sites.length === 1 ? "seed" : "seeds"}
             </div>
-            <p className="text-xs text-ink-variant/50 italic md:pr-4 md:text-right">
-              last updated {sites.length > 0 ? formatDate(sites[0].created_at) : 'recently'}
+            <p className="text-xs italic text-ink-variant/50 md:pr-4 md:text-right">
+              last updated {sites.length > 0 ? formatDate(sites[0].created_at) : "recently"}
             </p>
           </div>
 
@@ -90,65 +108,80 @@ export default function GardenDetailClient({
       </div>
 
       <div className="grid grid-cols-1 gap-16 items-start">
-        {/* Sites List */}
-        <div className="space-y-12">
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-ink-variant/60">
+              saved references
+            </p>
+            <h2 className="text-2xl tracking-tight lowercase text-ink">
+              {sites.length > 0
+                ? `${sites.length} site${sites.length === 1 ? "" : "s"} collected here`
+                : "no saved references yet"}
+            </h2>
+          </div>
+
           {schemaError ? (
-            <div className="p-8 rounded-3xl bg-surface-container-low border border-outline-ghost/10 text-ink-variant italic">
+            <div className="rounded-[2rem] bg-surface-container-low px-6 py-8 text-sm italic text-ink-variant">
               {schemaError}
             </div>
           ) : sites.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {sites.map((site, index) => (
-                <motion.div
+              {sites.map((site) => (
+                <motion.article
                   key={site.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.0 }}
+                  transition={{ duration: 0.18 }}
                   whileHover={{ backgroundColor: "var(--color-surface-container)" }}
-                  className="group relative px-6 py-4 rounded-2xl bg-surface-container-low transition-colors duration-150 ambient-panel border border-transparent hover:border-outline-ghost/10 flex flex-col md:flex-row md:items-center justify-between gap-4"
+                  className="ambient-panel rounded-[2rem] bg-surface-container-low px-6 py-5 transition-colors duration-150"
                 >
-                  <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8 flex-1 min-w-0">
-                    <div className="flex items-center gap-3 shrink-0">
-                      <span className="px-2 py-0.5 rounded-full bg-surface-highest text-[9px] uppercase tracking-widest text-primary-brand font-bold">
-                        {site.processing_status}
-                      </span>
-                      <span className="text-[9px] uppercase tracking-widest text-ink-variant/40 font-medium">
-                        {formatDate(site.created_at)}
-                      </span>
+                  <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                    <div className="min-w-0 space-y-3">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <span className="rounded-full bg-surface-highest px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.28em] text-ink-variant">
+                          saved
+                        </span>
+                        <span className="text-[10px] uppercase tracking-[0.28em] text-ink-variant/45">
+                          added {formatTimestamp(site.created_at)}
+                        </span>
+                      </div>
+
+                      <div className="space-y-1">
+                        <p className="text-xl font-medium tracking-tight text-ink">
+                          {formatSiteLabel(site.normalized_url)}
+                        </p>
+                        <p className="text-sm leading-relaxed text-ink-variant/80">
+                          {site.processor_status_message ?? "Saved for future reference."}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <span className="block text-lg font-medium tracking-tight text-ink truncate leading-tight">
-                        {site.normalized_url.replace(/^https?:\/\/(www\.)?/, '')}
-                      </span>
-                    </div>
-
-                    <div className="hidden lg:block flex-1 max-w-md">
-                      <p className="text-ink-variant/70 text-xs truncate italic">
-                        {site.processor_status_message ||
-                          "Digital artifact queued for archival processing."}
-                      </p>
+                    <div className="flex flex-col items-end gap-3">
+                      <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.28em] text-ink-variant/35">
+                        <span>ref.</span>
+                        <span>{site.id.slice(0, 8)}</span>
+                      </div>
+                      {garden?.id ? (
+                        <DeleteGardenSiteButton
+                          gardenId={garden.id}
+                          siteId={site.id}
+                          siteLabel={formatSiteLabel(site.normalized_url)}
+                        />
+                      ) : null}
                     </div>
                   </div>
-
-                  <div className="flex items-center gap-4 shrink-0">
-                    <div className="flex items-center gap-2 text-[9px] uppercase tracking-widest text-ink-variant/30 font-bold">
-                      <span className="hidden sm:inline">Ref.</span>
-                      <span>{site.id.slice(0, 8)}</span>
-                    </div>
-                  </div>
-                </motion.div>
+                </motion.article>
               ))}
             </div>
           ) : (
-            <div 
+            <div
               onClick={() => setIsModalOpen(true)}
-              className="py-20 px-8 rounded-[3rem] bg-surface-container-low border border-dashed border-outline-ghost/20 text-center space-y-4 cursor-pointer hover:bg-surface-container transition-colors"
+              className="cursor-pointer rounded-[3rem] bg-surface-container-low px-8 py-20 text-center space-y-4 transition-colors hover:bg-surface-container"
             >
-              <p className="text-lg text-ink-variant italic">
+              <p className="text-lg italic text-ink-variant">
                 This garden is currently empty.
               </p>
-              <p className="text-sm text-ink-variant/60 max-w-xs mx-auto">
+              <p className="mx-auto max-w-xs text-sm text-ink-variant/60">
                 Click the plus button or here to seed your first site.
               </p>
             </div>
@@ -163,19 +196,18 @@ export default function GardenDetailClient({
       >
         <div className="space-y-6">
           <p className="text-sm leading-relaxed text-ink-variant/80">
-            Submit a URL to be processed and indexed into this garden.
+            Save a URL into this garden so you can revisit it later.
           </p>
           {garden ? (
-            <AddGardenSiteForm 
-              gardenId={garden.id} 
+            <AddGardenSiteForm
+              gardenId={garden.id}
               onSuccess={() => {
-                // The form will handle success message, but we could close modal here
-                // For a better UX, maybe we wait a second or let the user close it
-              }} 
+                setIsModalOpen(false);
+              }}
             />
           ) : null}
-          <p className="text-[10px] leading-relaxed text-ink-variant/40 uppercase tracking-widest font-medium pt-4 border-t border-outline-ghost/10">
-            Note: Artifacts are stored in Supabase and queued for automated archival analysis.
+          <p className="pt-4 text-[10px] font-medium leading-relaxed uppercase tracking-widest text-ink-variant/40">
+            Saved seeds stay in your archive until you are ready to use them.
           </p>
         </div>
       </Modal>

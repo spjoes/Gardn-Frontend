@@ -1,5 +1,3 @@
-import type { ReactNode } from "react";
-
 export default function Footer() {
   return (
     <footer className="border-t border-outline-ghost/10 py-12 px-6">
@@ -16,16 +14,5 @@ export default function Footer() {
         </div> */}
       </div>
     </footer>
-  );
-}
-
-function FooterLink({ href, children }: { href: string; children: ReactNode }) {
-  return (
-    <a
-      href={href}
-      className="text-[10px] uppercase tracking-[0.2em] hover:text-ink transition-colors"
-    >
-      {children}
-    </a>
   );
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 
 import {
   addSiteToGarden,
@@ -26,10 +26,11 @@ export default function AddGardenSiteForm({
     INITIAL_STATE,
   );
 
-  // Trigger onSuccess when state changes to success
-  if (state?.success && onSuccess) {
-    onSuccess();
-  }
+  useEffect(() => {
+    if (state?.success) {
+      onSuccess?.();
+    }
+  }, [onSuccess, state?.success]);
 
   return (
     <form
