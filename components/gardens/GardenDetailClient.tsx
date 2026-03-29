@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "motion/react";
+import type { RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 import AddGardenSiteForm from "@/components/gardens/AddGardenSiteForm";
 import DeleteGardenSiteButton from "@/components/gardens/DeleteGardenSiteButton";
@@ -10,19 +11,31 @@ import GardenMcpPanel from "@/components/gardens/GardenMcpPanel";
 import GenerateGardenSiteDnaButton from "@/components/gardens/GenerateGardenSiteDnaButton";
 import Modal from "@/components/ui/Modal";
 import AddButton from "@/components/ui/AddButton";
+import { createClient as createBrowserSupabaseClient } from "@/lib/supabase/browser";
 
 interface DesignDocumentSummary {
   id: string;
+  garden_site_id: string;
+  model_provider: string;
+  model_name: string;
+  prompt_version: string;
   updated_at: string;
   search_tags: string[];
+  created_at: string;
 }
 
 interface Site {
   id: string;
+  garden_id: string;
+  user_id: string;
+  site_url: string;
   normalized_url: string;
   processing_status: string;
   processor_status_message: string | null;
+  processing_requested_at: string | null;
+  processed_at: string | null;
   created_at: string;
+  updated_at: string;
   design_document: DesignDocumentSummary | null;
 }
 
@@ -42,12 +55,113 @@ interface GardenMcpTokenSummary {
 }
 
 interface GardenDetailClientProps {
+  currentUserId: string;
   garden: Garden | null;
   sites: Site[];
   schemaError: string | null;
   mcpToken: GardenMcpTokenSummary | null;
   mcpEndpoint: string | null;
   mcpError: string | null;
+}
+
+type RealtimeRow = Record<string, unknown>;
+
+function isRealtimeRow(value: unknown): value is RealtimeRow {
+  return Boolean(value) && typeof value === "object";
+}
+
+function readString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function readNullableString(value: unknown) {
+  return typeof value === "string" ? value : null;
+}
+
+function readStringArray(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter((entry): entry is string => typeof entry === "string")
+    : [];
+}
+
+function sortSitesByCreatedAt(sites: Site[]) {
+  return [...sites].sort(
+    (left, right) => new Date(right.created_at).getTime() - new Date(left.created_at).getTime(),
+  );
+}
+
+function buildSiteFromRealtimeRow(row: RealtimeRow): Site | null {
+  const id = readString(row.id);
+  const gardenId = readString(row.garden_id);
+  const userId = readString(row.user_id);
+  const siteUrl = readString(row.site_url);
+  const normalizedUrl = readString(row.normalized_url);
+  const processingStatus = readString(row.processing_status);
+  const createdAt = readString(row.created_at);
+  const updatedAt = readString(row.updated_at);
+
+  if (
+    !id ||
+    !gardenId ||
+    !userId ||
+    !siteUrl ||
+    !normalizedUrl ||
+    !processingStatus ||
+    !createdAt ||
+    !updatedAt
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    garden_id: gardenId,
+    user_id: userId,
+    site_url: siteUrl,
+    normalized_url: normalizedUrl,
+    processing_status: processingStatus,
+    processor_status_message: readNullableString(row.processor_status_message),
+    processing_requested_at: readNullableString(row.processing_requested_at),
+    processed_at: readNullableString(row.processed_at),
+    created_at: createdAt,
+    updated_at: updatedAt,
+    design_document: null,
+  };
+}
+
+function buildDesignDocumentSummaryFromRealtimeRow(
+  row: RealtimeRow,
+): DesignDocumentSummary | null {
+  const id = readString(row.id);
+  const gardenSiteId = readString(row.garden_site_id);
+  const modelProvider = readString(row.model_provider);
+  const modelName = readString(row.model_name);
+  const promptVersion = readString(row.prompt_version);
+  const createdAt = readString(row.created_at);
+  const updatedAt = readString(row.updated_at);
+
+  if (
+    !id ||
+    !gardenSiteId ||
+    !modelProvider ||
+    !modelName ||
+    !promptVersion ||
+    !createdAt ||
+    !updatedAt
+  ) {
+    return null;
+  }
+
+  return {
+    id,
+    garden_site_id: gardenSiteId,
+    model_provider: modelProvider,
+    model_name: modelName,
+    prompt_version: promptVersion,
+    updated_at: updatedAt,
+    search_tags: readStringArray(row.search_tags),
+    created_at: createdAt,
+  };
 }
 
 function formatDate(date: string) {
@@ -89,6 +203,10 @@ function getSiteStatusLabel(site: Site) {
     return "queued";
   }
 
+  if (site.processing_status === "ready") {
+    return "dna ready";
+  }
+
   return site.design_document ? "dna ready" : "saved";
 }
 
@@ -105,6 +223,7 @@ function getSiteStatusClasses(site: Site) {
 }
 
 export default function GardenDetailClient({
+  currentUserId,
   garden,
   sites,
   schemaError,
@@ -113,7 +232,132 @@ export default function GardenDetailClient({
   mcpError,
 }: GardenDetailClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const analyzedSiteCount = sites.filter((site) => Boolean(site.design_document)).length;
+  const [siteItems, setSiteItems] = useState(() => sortSitesByCreatedAt(sites));
+
+  useEffect(() => {
+    setSiteItems(sortSitesByCreatedAt(sites));
+  }, [sites]);
+
+  useEffect(() => {
+    if (!garden?.id) {
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const realtimeChannel = supabase
+      .channel(`garden-live:${garden.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "garden_sites",
+          filter: `garden_id=eq.${garden.id}`,
+        },
+        (payload: RealtimePostgresChangesPayload<RealtimeRow>) => {
+          if (payload.eventType === "DELETE") {
+            const deletedId = isRealtimeRow(payload.old) ? readString(payload.old.id) : null;
+
+            if (!deletedId) {
+              return;
+            }
+
+            setSiteItems((current) => current.filter((site) => site.id !== deletedId));
+            return;
+          }
+
+          if (!isRealtimeRow(payload.new)) {
+            return;
+          }
+
+          const nextSite = buildSiteFromRealtimeRow(payload.new);
+
+          if (!nextSite) {
+            return;
+          }
+
+          setSiteItems((current) => {
+            const existingSite = current.find((site) => site.id === nextSite.id);
+
+            if (!existingSite) {
+              return sortSitesByCreatedAt([nextSite, ...current]);
+            }
+
+            return sortSitesByCreatedAt(
+              current.map((site) =>
+                site.id === nextSite.id
+                  ? {
+                      ...site,
+                      ...nextSite,
+                      design_document: site.design_document,
+                    }
+                  : site
+              ),
+            );
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "garden_site_design_documents",
+          filter: `user_id=eq.${currentUserId}`,
+        },
+        (payload: RealtimePostgresChangesPayload<RealtimeRow>) => {
+          if (payload.eventType === "DELETE") {
+            const deletedGardenSiteId = isRealtimeRow(payload.old)
+              ? readString(payload.old.garden_site_id)
+              : null;
+
+            if (!deletedGardenSiteId) {
+              return;
+            }
+
+            setSiteItems((current) =>
+              current.map((site) =>
+                site.id === deletedGardenSiteId
+                  ? {
+                      ...site,
+                      design_document: null,
+                    }
+                  : site
+              ),
+            );
+            return;
+          }
+
+          if (!isRealtimeRow(payload.new)) {
+            return;
+          }
+
+          const nextDesignDocument = buildDesignDocumentSummaryFromRealtimeRow(payload.new);
+
+          if (!nextDesignDocument) {
+            return;
+          }
+
+          setSiteItems((current) =>
+            current.map((site) =>
+              site.id === nextDesignDocument.garden_site_id
+                ? {
+                    ...site,
+                    design_document: nextDesignDocument,
+                  }
+                : site
+            ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(realtimeChannel);
+    };
+  }, [currentUserId, garden?.id]);
+
+  const analyzedSiteCount = siteItems.filter((site) => Boolean(site.design_document)).length;
 
   return (
     <section className="mx-auto max-w-7xl px-6 pt-40 pb-20">
@@ -147,10 +391,10 @@ export default function GardenDetailClient({
         <div className="flex flex-col items-start gap-6 self-end md:items-end">
           <div className="flex flex-col items-start gap-2 md:items-end">
             <div className="rounded-full bg-surface-container px-4 py-2 text-[11px] font-medium uppercase tracking-widest text-ink-variant">
-              {sites.length} {sites.length === 1 ? "seed" : "seeds"}
+              {siteItems.length} {siteItems.length === 1 ? "seed" : "seeds"}
             </div>
             <p className="text-xs italic text-ink-variant/50 md:pr-4 md:text-right">
-              last updated {sites.length > 0 ? formatDate(sites[0].created_at) : "recently"}
+              last updated {siteItems.length > 0 ? formatDate(siteItems[0].created_at) : "recently"}
             </p>
           </div>
 
@@ -180,8 +424,8 @@ export default function GardenDetailClient({
               saved references
             </p>
             <h2 className="text-2xl tracking-tight lowercase text-ink">
-              {sites.length > 0
-                ? `${sites.length} site${sites.length === 1 ? "" : "s"} collected here`
+              {siteItems.length > 0
+                ? `${siteItems.length} site${siteItems.length === 1 ? "" : "s"} collected here`
                 : "no saved references yet"}
             </h2>
           </div>
@@ -190,9 +434,9 @@ export default function GardenDetailClient({
             <div className="rounded-[2rem] bg-surface-container-low px-6 py-8 text-sm italic text-ink-variant">
               {schemaError}
             </div>
-          ) : sites.length > 0 ? (
+          ) : siteItems.length > 0 ? (
             <div className="grid grid-cols-1 gap-4">
-              {sites.map((site) => (
+              {siteItems.map((site) => (
                 <motion.article
                   key={site.id}
                   initial={{ opacity: 0, y: 10 }}

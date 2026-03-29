@@ -60,6 +60,7 @@ export default async function GardenDetailPage({
 
       <main className="flex-1">
         <GardenDetailClient 
+          currentUserId={user.id}
           garden={garden ?? null}
           sites={sites}
           schemaError={schemaError}
