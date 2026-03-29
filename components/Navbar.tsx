@@ -40,7 +40,10 @@ declare global {
       registerDynamic?: (els: string | Element | Element[]) => void;
     };
     html2canvas?: typeof import("html2canvas").default;
-    __liquidGLRenderer__?: { lenses: Array<{ el: Element }> };
+    __liquidGLRenderer__?: {
+      lenses: Array<{ el: Element }>;
+      canvas?: HTMLCanvasElement;
+    };
   }
 }
 
@@ -115,7 +118,36 @@ export default function Navbar({ userEmail }: NavbarProps) {
       window.clearInterval(poll);
       cancelAnimationFrame(raf);
     };
-  }, [updateContrast]);
+  }, [updateContrast, pathname]);
+
+  /*
+   * liquidGL sets the lens shell opacity to 0 until a snapshot uploads. If html2canvas fails on
+   * some routes (tall DOM, GPU limits), _reveal() never runs and the whole bar + links stay invisible.
+   */
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const shell = document.getElementById(
+        LIQUID_GLASS_NAV_ID,
+      ) as HTMLElement | null;
+      if (
+        !shell ||
+        !navRootRef.current ||
+        !navRootRef.current.contains(shell)
+      ) {
+        return;
+      }
+      const opacity = parseFloat(getComputedStyle(shell).opacity);
+      if (opacity >= 0.05) return;
+
+      shell.style.opacity = "1";
+      const renderer = window.__liquidGLRenderer__;
+      if (renderer?.canvas) {
+        renderer.canvas.style.opacity = "1";
+      }
+    }, 2800);
+
+    return () => clearTimeout(timer);
+  }, [pathname]);
 
   useLayoutEffect(() => {
     let cancelled = false;
@@ -131,8 +163,10 @@ export default function Navbar({ userEmail }: NavbarProps) {
       if (cancelled || !window.liquidGL) return;
 
       pruneDetachedLiquidLenses();
+      if (cancelled) return;
 
       if (!document.getElementById(LIQUID_GLASS_NAV_ID)) return;
+      if (cancelled) return;
 
       window.liquidGL({
         target: `#${LIQUID_GLASS_NAV_ID}`,
@@ -145,7 +179,7 @@ export default function Navbar({ userEmail }: NavbarProps) {
         frost: 2,
         shadow: true,
         specular: true,
-        reveal: "fade",
+        reveal: "none",
         tilt: false,
         magnify: 1,
         on: {
@@ -165,7 +199,7 @@ export default function Navbar({ userEmail }: NavbarProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [pathname]);
 
   return (
     <motion.div
