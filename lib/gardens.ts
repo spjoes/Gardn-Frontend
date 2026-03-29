@@ -3,6 +3,11 @@ import "server-only";
 import type { User } from "@supabase/supabase-js";
 import { redirect } from "next/navigation";
 
+import {
+  DESIGN_DNA_SCREENSHOT_URL_TTL_SECONDS,
+  getDesignDnaScreenshotArtifacts,
+  type DesignDnaScreenshotArtifact,
+} from "@/lib/design-dna-screenshots";
 import { createClient } from "@/lib/supabase/server";
 
 export type Garden = {
@@ -45,7 +50,10 @@ export type GardenSiteDesignDocument = GardenSiteDesignDocumentSummary & {
   document_markdown: string;
   style_fingerprint: Record<string, unknown>;
   analysis_metadata: Record<string, unknown>;
+  screenshots: DesignDnaScreenshotArtifact[];
 };
+
+type GardenSiteDesignDocumentRecord = Omit<GardenSiteDesignDocument, "screenshots">;
 
 const SIGN_IN_MESSAGE = encodeURIComponent("Sign in to manage your gardens.");
 
@@ -167,6 +175,35 @@ export async function getGardenDetailForUser(userId: string, gardenId: string) {
   };
 }
 
+async function signDesignDnaScreenshots(
+  analysisMetadata: Record<string, unknown>,
+) {
+  const screenshotArtifacts = getDesignDnaScreenshotArtifacts(analysisMetadata);
+
+  if (screenshotArtifacts.length === 0) {
+    return [] as DesignDnaScreenshotArtifact[];
+  }
+
+  const supabase = await createClient();
+
+  return await Promise.all(
+    screenshotArtifacts.map(async (artifact) => {
+      const { data, error } = await supabase
+        .storage
+        .from(artifact.bucket)
+        .createSignedUrl(
+          artifact.path,
+          DESIGN_DNA_SCREENSHOT_URL_TTL_SECONDS,
+        );
+
+      return {
+        ...artifact,
+        signedUrl: error ? null : (data?.signedUrl ?? null),
+      } satisfies DesignDnaScreenshotArtifact;
+    }),
+  );
+}
+
 export async function getGardenSiteDesignDocumentForUser(
   userId: string,
   gardenId: string,
@@ -236,7 +273,10 @@ export async function getGardenSiteDesignDocumentForUser(
     throw new Error(designDocumentResult.error.message);
   }
 
-  const rawDesignDocument = ((designDocumentResult.data ?? null) as unknown) as GardenSiteDesignDocument | null;
+  const rawDesignDocument = ((designDocumentResult.data ?? null) as unknown) as GardenSiteDesignDocumentRecord | null;
+  const screenshots = rawDesignDocument
+    ? await signDesignDnaScreenshots(rawDesignDocument.analysis_metadata ?? {})
+    : [];
 
   const site = siteResult.data
     ? ({
@@ -262,6 +302,11 @@ export async function getGardenSiteDesignDocumentForUser(
   return {
     garden: ((gardenResult.data ?? null) as unknown) as Garden | null,
     site,
-    designDocument: rawDesignDocument,
+    designDocument: rawDesignDocument
+      ? {
+          ...rawDesignDocument,
+          screenshots,
+        }
+      : null,
   };
 }

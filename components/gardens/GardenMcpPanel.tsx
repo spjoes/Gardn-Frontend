@@ -55,6 +55,17 @@ function buildConnectionSnippet(endpoint: string, token: string) {
   );
 }
 
+function buildCodexTomlSnippet(endpoint: string, envVarName: string) {
+  return `[mcp_servers.gardn]
+enabled = true
+url = "${endpoint}"
+bearer_token_env_var = "${envVarName}"`;
+}
+
+function buildPowerShellEnvSnippet(token: string, envVarName: string) {
+  return `$env:${envVarName} = "${token}"`;
+}
+
 export default function GardenMcpPanel({
   gardenId,
   gardenName,
@@ -64,10 +75,13 @@ export default function GardenMcpPanel({
   totalSiteCount,
   analyzedSiteCount,
 }: GardenMcpPanelProps) {
+  const codexTokenEnvVarName = "GARDN_MCP_TOKEN";
   const [pending, startTokenTransition] = useTransition();
   const [message, setMessage] = useState<string | null>(null);
   const [revealedToken, setRevealedToken] = useState<string | null>(null);
-  const [copiedLabel, setCopiedLabel] = useState<"token" | "config" | null>(null);
+  const [copiedLabel, setCopiedLabel] = useState<
+    "token" | "config" | "codex" | "env" | null
+  >(null);
   const router = useRouter();
 
   const pendingSiteCount = Math.max(totalSiteCount - analyzedSiteCount, 0);
@@ -76,14 +90,23 @@ export default function GardenMcpPanel({
     revealedToken && mcpEndpoint
       ? buildConnectionSnippet(mcpEndpoint, revealedToken)
       : null;
+  const codexTomlSnippet =
+    mcpEndpoint ? buildCodexTomlSnippet(mcpEndpoint, codexTokenEnvVarName) : null;
+  const powerShellEnvSnippet =
+    revealedToken ? buildPowerShellEnvSnippet(revealedToken, codexTokenEnvVarName) : null;
 
-  function resetCopiedLabelAfterDelay(label: "token" | "config") {
+  function resetCopiedLabelAfterDelay(
+    label: "token" | "config" | "codex" | "env",
+  ) {
     window.setTimeout(() => {
       setCopiedLabel((current) => (current === label ? null : current));
     }, 1600);
   }
 
-  async function copyText(label: "token" | "config", value: string) {
+  async function copyText(
+    label: "token" | "config" | "codex" | "env",
+    value: string,
+  ) {
     try {
       await navigator.clipboard.writeText(value);
       setCopiedLabel(label);
@@ -155,7 +178,8 @@ export default function GardenMcpPanel({
               <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink-variant/75">
                 This server exposes `get_garden_overview`, `get_garden_design_dna_bundle`,
                 and `get_design_dna_document`, plus read-only resources for the full garden
-                bundle and each saved site&apos;s raw DESIGN.md.
+                bundle and each saved site&apos;s raw DESIGN.md. Bundles now include signed
+                screenshot references when Gardn captured them during analysis.
               </p>
             </div>
           ) : (
@@ -198,6 +222,54 @@ export default function GardenMcpPanel({
 
               {connectionSnippet ? (
                 <div className="space-y-3">
+                  {codexTomlSnippet ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-[10px] uppercase tracking-[0.28em] text-ink-variant/45">
+                          codex config.toml snippet
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => copyText("codex", codexTomlSnippet)}
+                          className="rounded-full bg-surface-highest px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-ink-variant transition-colors hover:bg-surface-high"
+                        >
+                          {copiedLabel === "codex" ? "copied codex snippet" : "copy codex snippet"}
+                        </button>
+                      </div>
+
+                      <pre className="overflow-x-auto whitespace-pre-wrap rounded-[1.5rem] bg-surface-container px-4 py-4 font-mono text-[13px] leading-6 text-ink">
+                        {codexTomlSnippet}
+                      </pre>
+
+                      <p className="text-sm leading-relaxed text-ink-variant">
+                        Codex expects <span className="font-mono text-ink">bearer_token_env_var</span>{" "}
+                        to be an environment variable name, not the token itself. Restart Codex
+                        after updating the config so it reloads the MCP server list.
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {powerShellEnvSnippet ? (
+                    <div className="space-y-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                        <p className="text-[10px] uppercase tracking-[0.28em] text-ink-variant/45">
+                          powershell env snippet
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => copyText("env", powerShellEnvSnippet)}
+                          className="rounded-full bg-surface-highest px-4 py-2 text-[10px] uppercase tracking-[0.28em] text-ink-variant transition-colors hover:bg-surface-high"
+                        >
+                          {copiedLabel === "env" ? "copied env snippet" : "copy env snippet"}
+                        </button>
+                      </div>
+
+                      <pre className="overflow-x-auto whitespace-pre-wrap rounded-[1.5rem] bg-surface-container px-4 py-4 font-mono text-[13px] leading-6 text-ink">
+                        {powerShellEnvSnippet}
+                      </pre>
+                    </div>
+                  ) : null}
+
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <p className="text-[10px] uppercase tracking-[0.28em] text-ink-variant/45">
                       generic remote mcp config
@@ -336,7 +408,7 @@ export default function GardenMcpPanel({
             </p>
             <div className="mt-4 space-y-3 text-sm leading-relaxed text-ink-variant">
               <p>1. Connect your MCP client to the remote endpoint with the bearer token.</p>
-              <p>2. Call `get_garden_design_dna_bundle` to load every analyzed dossier in this garden.</p>
+              <p>2. Call `get_garden_design_dna_bundle` to load every analyzed dossier and its screenshot references in this garden.</p>
               <p>3. Fetch `gardn://sites/&lt;siteId&gt;/design-dna.md` when you need a single raw DESIGN.md.</p>
             </div>
           </div>

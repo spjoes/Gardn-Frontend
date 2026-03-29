@@ -152,6 +152,47 @@ export default async function GardenSiteDesignDnaPage({
                 </div>
               ) : null}
 
+              {detail.designDocument.screenshots.length > 0 ? (
+                <section className="space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-ink-variant/55">
+                      captured references
+                    </p>
+                    <p className="text-sm leading-relaxed text-ink-variant/75">
+                      Gardn stored viewport captures alongside this DESIGN.md so downstream
+                      agents can inspect the actual look, not just the written summary.
+                    </p>
+                  </div>
+
+                  <div className="grid gap-4 md:grid-cols-3">
+                    {detail.designDocument.screenshots.map((screenshot) => (
+                      <figure
+                        key={`${screenshot.path}-${screenshot.capturedAt}`}
+                        className="overflow-hidden rounded-[1.75rem] bg-surface-container-low"
+                      >
+                        {screenshot.signedUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={screenshot.signedUrl}
+                            alt={`${siteLabel} ${screenshot.label} screenshot`}
+                            className="aspect-[4/3] w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex aspect-[4/3] items-center justify-center bg-surface-container text-xs uppercase tracking-[0.28em] text-ink-variant/50">
+                            screenshot unavailable
+                          </div>
+                        )}
+
+                        <figcaption className="flex items-center justify-between gap-3 px-4 py-3 text-[10px] uppercase tracking-[0.24em] text-ink-variant/65">
+                          <span>{screenshot.label}</span>
+                          <span>{formatTimestamp(screenshot.capturedAt)}</span>
+                        </figcaption>
+                      </figure>
+                    ))}
+                  </div>
+                </section>
+              ) : null}
+
               <article className="ambient-panel rounded-[2.5rem] bg-surface-container-low px-6 py-8 sm:px-10 sm:py-12">
                 <pre className="overflow-x-auto whitespace-pre-wrap font-mono text-[13px] leading-7 text-ink">
                   {detail.designDocument.document_markdown}
